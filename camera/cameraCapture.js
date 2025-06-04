@@ -3,24 +3,45 @@ const sharp = require('sharp');
 const sharpBmp = require('sharp-bmp');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 class CameraCapture {
     constructor() {
         this.camera = null;
         this.tempDir = path.join(__dirname, '../temp');
+        this.photosDir = this.setupPhotosDirectory();
         this.ensureTempDir();
         this.initializeCamera();
+    }
+    
+    setupPhotosDirectory() {
+        // Directorio multiplataforma para guardar fotos
+        const homeDir = os.homedir();
+        const photosDir = path.join(homeDir, 'Documents', 'Photos');
+        
+        // Crear directorio si no existe
+        if (!fs.existsSync(photosDir)) {
+            fs.mkdirSync(photosDir, { recursive: true });
+            console.log('📁 Directorio de fotos creado:', photosDir);
+        } else {
+            console.log('📁 Directorio de fotos:', photosDir);
+        }
+        
+        return photosDir;
     }
     
     ensureTempDir() {
         if (!fs.existsSync(this.tempDir)) {
             fs.mkdirSync(this.tempDir, { recursive: true });
-            console.log('Directorio temporal creado:', this.tempDir);
+            console.log('📁 Directorio temporal creado:', this.tempDir);
         }
     }
     
     initializeCamera() {
-        // Configuración de la cámara
+        // Configuración multiplataforma
+        const isWindows = process.platform === 'win32';
+        const isLinux = process.platform === 'linux';
+        
         const opts = {
             width: 1280,
             height: 720,
@@ -30,24 +51,28 @@ class CameraCapture {
             output: "jpeg",
             device: false, // false = cámara por defecto
             callbackReturn: "location",
-            verbose: false // Reducir logs de node-webcam
+            verbose: false
         };
         
         try {
             this.camera = NodeWebcam.create(opts);
-            console.log('Cámara USB inicializada');
+            console.log(`🎥 Cámara inicializada en ${process.platform}`);
             
-            // Test inicial para verificar que la cámara funciona
+            if (isLinux) {
+                console.log('💡 Linux: Asegúrate de tener permisos en /dev/video* o fswebcam instalado');
+            }
+            
+            // Test inicial
             this.testCamera();
         } catch (error) {
-            console.error('Error en inicialización de cámara:', error);
+            console.error('❌ Error en inicialización de cámara:', error);
             this.camera = null;
         }
     }
     
     async testCamera() {
         try {
-            console.log('Realizando test inicial de cámara...');
+            console.log('🔍 Realizando test inicial de cámara...');
             const testImage = await this.captureTestImage();
             if (testImage) {
                 console.log('✅ Test de cámara exitoso');
@@ -91,7 +116,8 @@ class CameraCapture {
         }
         
         return new Promise((resolve, reject) => {
-            const tempFileName = `capture_${Date.now()}.jpg`;
+            const timestamp = Date.now();
+            const tempFileName = `capture_${timestamp}.jpg`;
             const tempFilePath = path.join(this.tempDir, tempFileName);
             
             console.log('=== INICIANDO CAPTURA ===');
@@ -126,21 +152,19 @@ class CameraCapture {
                     
                     let sharpInstance;
                     
-                    // MANEJAR DIFERENTES FORMATOS
+                    // MANEJAR DIFERENTES FORMATOS (multiplataforma)
                     if (buffer.length >= 2 && buffer[0] === 0xFF && buffer[1] === 0xD8) {
-                        // JPEG válido (FF D8)
+                        // JPEG válido (FF D8) - común en Linux
                         console.log('✅ Archivo JPEG detectado');
                         sharpInstance = sharp(tempFilePath);
                         
                     } else if (buffer.length >= 2 && buffer[0] === 0x42 && buffer[1] === 0x4D) {
-                        // BMP (42 4D = "BM") - USAR sharp-bmp
-                        console.log('🔄 Archivo BMP detectado, usando sharp-bmp...');
+                        // BMP (42 4D = "BM") - común en Windows
+                        console.log('🔄 Archivo BMP detectado (Windows), usando sharp-bmp...');
                         
                         try {
-                            // CONVERTIR BMP usando sharp-bmp
                             sharpInstance = sharpBmp.sharpFromBmp(tempFilePath);
                             console.log('✅ BMP procesado con sharp-bmp');
-                            
                         } catch (bmpError) {
                             console.error('Error con sharp-bmp:', bmpError.message);
                             throw new Error(`Error procesando BMP: ${bmpError.message}`);
@@ -171,7 +195,14 @@ class CameraCapture {
                     
                     console.log(`✅ Redimensión completada. Tamaño final: ${resizedBuffer.length} bytes`);
                     
-                    // Convertir a base64
+                    // GUARDAR FOTO PERMANENTE en ~/Documents/Photos
+                    const photoFileName = `photo_${timestamp}.jpg`;
+                    const photoFilePath = path.join(this.photosDir, photoFileName);
+                    
+                    fs.writeFileSync(photoFilePath, resizedBuffer);
+                    console.log(`💾 Foto guardada permanentemente: ${photoFilePath}`);
+                    
+                    // Convertir a base64 para envío
                     const base64Image = resizedBuffer.toString('base64');
                     console.log(`📦 Base64 generado. Longitud: ${base64Image.length} caracteres`);
                     
@@ -214,12 +245,12 @@ class CameraCapture {
                     const buffer = fs.readFileSync(tempFilePath);
                     let sharpInstance;
                     
-                    // MANEJAR DIFERENTES FORMATOS para preview
+                    // MANEJAR DIFERENTES FORMATOS para preview (multiplataforma)
                     if (buffer[0] === 0xFF && buffer[1] === 0xD8) {
                         // JPEG
                         sharpInstance = sharp(tempFilePath);
                     } else if (buffer[0] === 0x42 && buffer[1] === 0x4D) {
-                        // BMP → usar sharp-bmp
+                        // BMP → usar sharp-bmp (Windows)
                         sharpInstance = sharpBmp.sharpFromBmp(tempFilePath);
                     } else {
                         // Otros formatos
@@ -270,12 +301,46 @@ class CameraCapture {
         }
     }
     
+    // Método para obtener estadísticas de fotos guardadas
+    getPhotosStats() {
+        try {
+            const files = fs.readdirSync(this.photosDir);
+            const photoFiles = files.filter(file => file.startsWith('photo_') && file.endsWith('.jpg'));
+            
+            console.log(`📊 Fotos guardadas: ${photoFiles.length}`);
+            console.log(`📁 Directorio: ${this.photosDir}`);
+            
+            return {
+                count: photoFiles.length,
+                directory: this.photosDir,
+                files: photoFiles
+            };
+        } catch (error) {
+            console.error('Error obteniendo estadísticas de fotos:', error);
+            return { count: 0, directory: this.photosDir, files: [] };
+        }
+    }
+    
     static listCameras() {
         console.log('📹 Para listar cámaras USB disponibles:');
         if (process.platform === 'win32') {
             console.log('Windows: wmic path Win32_USBControllerDevice get Dependent');
+        } else if (process.platform === 'linux') {
+            console.log('Linux: ls /dev/video*');
+            console.log('Linux: sudo chmod 666 /dev/video0 (si hay problemas de permisos)');
         } else {
-            console.log('Linux/Mac: ls /dev/video*');
+            console.log('Mac: system_profiler SPCameraDataType');
+        }
+    }
+    
+    static checkSystemRequirements() {
+        console.log('🖥️ Sistema operativo:', process.platform);
+        console.log('🏠 Directorio home:', os.homedir());
+        console.log('📁 Directorio de fotos:', path.join(os.homedir(), 'Documents', 'Photos'));
+        
+        if (process.platform === 'linux') {
+            console.log('💡 Linux: Instala fswebcam si es necesario: sudo apt-get install fswebcam');
+            console.log('💡 Linux: Verifica permisos de cámara: ls -la /dev/video*');
         }
     }
 }

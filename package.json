@@ -1,0 +1,19 @@
+{
+  "name": "camera-server",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-webcam": "^0.8.1",
+    "sharp": "^0.32.6",
+    "sharp-bmp": "^0.1.5",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

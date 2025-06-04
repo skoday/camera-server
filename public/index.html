@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera LLaVA Server Interface</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎥 Camera LLaVA Server Interface</h1>
+            <div class="server-info">
+                <span id="clientCount">Clientes conectados: 0</span>
+                <span id="connectionStatus" class="status-disconnected">Desconectado</span>
+            </div>
+        </div>
+        
+        <div class="main-layout">
+            <!-- Columna izquierda - Cámara del servidor -->
+            <div class="camera-section">
+                <h2>📹 Cámara del Servidor (USB)</h2>
+                
+                <div class="controls">
+                    <div class="seconds-input">
+                        <label for="seconds">Segundos:</label>
+                        <input type="number" id="seconds" min="1" max="60" value="5">
+                    </div>
+                    
+                    <div class="buttons">
+                        <button id="startBtn" class="btn btn-primary">Enviar imágenes</button>
+                        <button id="stopBtn" class="btn btn-secondary">Parar imágenes</button>
+                    </div>
+                </div>
+                
+                <div class="camera-container">
+                    <img id="serverCamera" src="" alt="Cámara del servidor" />
+                    <div id="cameraPlaceholder" class="camera-placeholder">
+                        <div class="placeholder-content">
+                            <p>📷</p>
+                            <p>Esperando imagen de la cámara del servidor...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="status" class="status">⏸️ Captura automática pausada</div>
+            </div>
+            
+            <!-- Columna derecha - Prompt y respuesta -->
+            <div class="prompt-section">
+                <h2>💬 Input de texto para el prompt</h2>
+                <textarea id="prompt" placeholder="What is in this picture?" rows="4">What is in this picture?</textarea>
+                
+                <h2>🤖 Respuesta del LLM</h2>
+                <textarea id="response" readonly rows="8" placeholder="Esperando primera respuesta..."></textarea>
+            </div>
+        </div>
+        
+        <!-- Tabla de respuestas -->
+        <div class="responses-section">
+            <h2>📊 TABLA CON RESPUESTAS PASADAS</h2>
+            <div class="table-container">
+                <table id="responsesTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Timestamp</th>
+                            <th>Prompt</th>
+                            <th>Response</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Respuestas se llenarán dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <button id="clearBtn" class="btn btn-secondary">Limpiar historial</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/client.js"></script>
+</body>
+</html>

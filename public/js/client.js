@@ -25,21 +25,13 @@ function updateResponsesTable() {
         const row = responsesTableBody.insertRow();
         row.insertCell(0).textContent = resp.id;
         row.insertCell(1).textContent = resp.timestamp;
-        
-        // Mostrar nombre de archivo si está disponible
-        const fileCell = row.insertCell(2);
-        fileCell.textContent = resp.fileName || 'N/A';
-        fileCell.title = resp.filePath || 'Ruta no disponible';
-        
-        row.insertCell(3).textContent = resp.prompt;
-        
-        const respCell = row.insertCell(4);
+        row.insertCell(2).textContent = resp.prompt;
+        const respCell = row.insertCell(3);
         const truncated = resp.response.length > 100 ? resp.response.substring(0, 100) + '...' : resp.response;
         respCell.textContent = truncated;
         respCell.title = resp.fullResponse;
     });
 }
-
 
 // Función para actualizar el estado de conexión
 function updateConnectionStatus(connected) {

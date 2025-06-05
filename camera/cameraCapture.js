@@ -210,11 +210,7 @@ class CameraCapture {
                     this.cleanupTempFile(tempFilePath);
                     
                     console.log('=== CAPTURA EXITOSA ===');
-                    resolve({
-                        base64: base64Image,
-                        fileName: photoFileName,
-                        filePath: photoFilePath
-                    });
+                    resolve(base64Image);
                     
                 } catch (sharpError) {
                     console.error('❌ Error procesando imagen:', sharpError);

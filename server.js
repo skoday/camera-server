@@ -162,14 +162,11 @@ function stopServerCapture() {
 
 async function captureAndProcess() {
     try {
-        if (!camera) {
-            throw new Error('Cámara no disponible');
-        }
-        
         console.log('Capturando imagen de cámara USB...');
         
-        // Capturar imagen de la cámara USB
-        const imageBase64 = await camera.captureImage672x672();
+        // Capturar imagen de la cámara USB - ahora retorna objeto con datos
+        const captureResult = await camera.captureImage672x672();
+        const { base64: imageBase64, fileName, filePath } = captureResult;
         
         // VERIFICAR TAMAÑO de la imagen antes de enviar
         if (!imageBase64 || imageBase64.length > MAX_IMAGE_SIZE) {
@@ -181,13 +178,15 @@ async function captureAndProcess() {
         // Enviar imagen en vivo a todos los clientes (de forma segura)
         safeEmit('liveImage', imageBase64);
         
-        // Procesar con LLaVA API
-        const response = await sendToLLaVAAPI(imageBase64, serverState.prompt);
+        // Procesar con LLaVA API usando el nombre real del archivo
+        const response = await sendToLLaVAAPI(imageBase64, serverState.prompt, fileName);
         
-        // Crear objeto de respuesta limpio (sin referencias circulares)
+        // Crear objeto de respuesta limpio
         const responseEntry = {
             id: responses.length + 1,
             timestamp: new Date().toLocaleString(),
+            fileName: fileName, // Agregar nombre de archivo a la respuesta
+            filePath: filePath, // Agregar ruta completa
             prompt: serverState.prompt.substring(0, 50) + 
                    (serverState.prompt.length > 50 ? '...' : ''),
             response: response,
@@ -200,7 +199,7 @@ async function captureAndProcess() {
         safeEmit('newResponse', responseEntry);
         safeEmit('responsesHistory', responses);
         
-        console.log('Imagen procesada y enviada a clientes');
+        console.log(`Imagen procesada y enviada a clientes. Archivo: ${fileName}`);
         
     } catch (error) {
         console.error('Error en captura y procesamiento:', error.message);
@@ -225,7 +224,7 @@ function safeEmit(event, data) {
     }
 }
 
-async function sendToLLaVAAPI(imageBase64, prompt) {
+async function sendToLLaVAAPI(imageBase64, prompt, fileName) {
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
@@ -233,7 +232,7 @@ async function sendToLLaVAAPI(imageBase64, prompt) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                file: "server_camera_672x672.jpg",
+                file: fileName, // USAR EL NOMBRE REAL DEL ARCHIVO
                 model: "llava:7b",
                 prompt: prompt,
                 images: [imageBase64]
